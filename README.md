@@ -3,8 +3,8 @@
 偏相关与滞后相关的真实业务分析小型项目。完整模拟客户、痛点、上下游、算法公式与一天工作剧本见 [BUSINESS.md](BUSINESS.md)。
 
 ## 模块与业务流程
-数据接入（JSON/CSV、字段验证、批次指纹）→ 参数化分析（异步 Python worker）→ 结果复核（指标、图形、明细、解释、批准）→ 定时分发（本地收件箱、CSV/JSON、SHA256）；另有业务总览和审计轨迹。
-三个贯穿全栈的实体：Dataset 数据批次、Job 分析任务、Report 分发计划；辅助 User、Audit、Delivery。
+数据接入（JSON/CSV、字段验证、批次指纹）→ 参数化分析（异步 Python worker）→ 结果复核（指标、图形、明细、解释、批准）→ 跨站调拨（引用已批准研究、预占余车、按批实搬）→ 定时分发（本地收件箱、CSV/JSON、SHA256）；另有业务总览和审计轨迹。
+三个贯穿全栈的核心实体：Dataset 数据批次、Job 分析任务、Report 分发计划；调拨侧新增 Transfer 调拨单与 Station 站点台账（含 TransferBatch 批次回报）；辅助 User、Audit、Delivery。
 
 ## 快速启动
 ```bash
@@ -29,7 +29,9 @@ Python 3.12 / FastAPI / SQLAlchemy / NumPy / SciPy / scikit-learn；PostgreSQL 1
 ## 目录与工程约定
 backend/src/{models,schemas,services,routes,controllers,middlewares,constants,config,utils}；backend/scripts/seed_demo.py；backend/migrations/initial.py。
 frontend/src/{api,stores,types,components/common,hooks,pages,router,utils,constants}。
-Role 枚举：admin/analyst/viewer；JobStatus：queued/running/completed/failed。后端 backend/src/constants/enums.py，前端 frontend/src/constants/enums.js；路由权限在 middlewares/auth.py；页面按相同角色控制操作入口。
+Role 枚举：admin/analyst/viewer；JobStatus：queued/running/completed/failed；TransferStatus：draft/reserved/partial/settled/cancelled。后端 backend/src/constants/enums.py，前端 frontend/src/constants/enums.js；路由权限在 middlewares/auth.py；页面按相同角色控制操作入口。
+
+调拨接口在 backend/src/routes/transfers.py、服务在 backend/src/services/transfers.py：`POST /transfers` 草稿、`POST /transfers/{id}/confirm` 预占、`POST /transfers/{id}/batches` 分批回报、`POST /transfers/{id}/cancel` 取消未搬，`GET /stations` 与 `GET /transfers` 供台账页核对。确认与回报用带条件更新裁决并发；同单同批号只记一次；每批同事务更新调出与调入两站。前端页面 `#/transfers`（frontend/src/pages/transfers.js），分析员与负责人可操作，观察员只读。
 
 ## 环境变量与 Docker
 COMPOSE_PROJECT_NAME=cycle-factors；FRONTEND_PORT=18202；BACKEND_PORT=19202；DB_PORT=17702；DB_PASSWORD、JWT_SECRET 见 .env.example；SEED_DEMO 默认 true。共享命名产物卷供后端下载与 worker 写入，数据库/Redis 各持久卷。
